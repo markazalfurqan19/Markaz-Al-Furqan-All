@@ -297,9 +297,24 @@ export function downloadCsvClient(
   URL.revokeObjectURL(url);
 }
 
+async function parseExportError(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json();
+    if (body && typeof body.error === 'string' && body.error.trim()) {
+      return body.error;
+    }
+  } catch {
+    // Ignore non-JSON error bodies
+  }
+  return fallback;
+}
+
 export async function downloadServerPdf(params: {
   title: string;
   subtitle?: string;
+  language?: MarkazLanguage;
+  narrativeText?: string;
+  kpis?: Array<{ label: string; value: string }>;
   columns: string[];
   rows: (string | number)[][];
   filename?: string;
@@ -309,12 +324,37 @@ export async function downloadServerPdf(params: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
   });
-  if (!res.ok) throw new Error('Failed to generate PDF');
+  if (!res.ok) throw new Error(await parseExportError(res, 'Failed to generate PDF'));
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = params.filename || 'alfurqaan-report.pdf';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadServerPptx(params: {
+  title: string;
+  subtitle?: string;
+  language?: MarkazLanguage;
+  narrativeText?: string;
+  kpis?: Array<{ label: string; value: string }>;
+  columns: string[];
+  rows: (string | number)[][];
+  filename?: string;
+}): Promise<void> {
+  const res = await fetch('/api/v1/exports/pptx', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+  });
+  if (!res.ok) throw new Error(await parseExportError(res, 'Failed to generate PowerPoint (.pptx)'));
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = params.filename || 'alfurqaan-report.pptx';
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -330,7 +370,7 @@ export async function downloadServerXlsx(params: {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(params),
   });
-  if (!res.ok) throw new Error('Failed to generate XLSX');
+  if (!res.ok) throw new Error(await parseExportError(res, 'Failed to generate XLSX'));
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');

@@ -156,6 +156,15 @@ export const TRANSLATIONS: Record<MarkazLanguage, Record<string, string>> = {
     // Audit & Settings
     institutionSettings: 'Qindaa’ina Markazaa',
     auditLogsTitle: 'Galmee Hordoffii Nageenyaa (Audit Trail)',
+    // Background 3-Day Absence Monitor
+    absenceStreakAlertTitle: 'Akeekkachiisa Hafuu Guyyaa 3 Walitti Aansuun',
+    absenceStreakAlertBody: 'Barataan {student} guyyoota {days} walitti aansuun ({dates}) attendance irraa hafeera. Maaloo hordoffii fi maatii quunnamaa.',
+    absenceStreakBannerSubtitle: 'Tajaajilli duubaa (background service) barattoota guyyoota 3+ walitti aansuun hafan argateera.',
+    reviewAttendance: 'Attendance Ilaali',
+    enablePushAlerts: 'Push Notification Bani',
+    pushAlertsActive: 'Push Alerts Hojii Irra',
+    pushAlertsBlocked: 'Push Browser Irraa Dhorkame',
+    dismissAllAlerts: 'Hunda Cufi',
   },
   ar: {
     brandMain: 'مَرْكَزُ الْفُرْقَانِ لِتَحْفِيظِ الْقُرْآنِ الْكَرِيمِ',
@@ -298,6 +307,14 @@ export const TRANSLATIONS: Record<MarkazLanguage, Record<string, string>> = {
     aiReportTopic: 'موضوع التقرير',
     institutionSettings: 'إعدادات المركز',
     auditLogsTitle: 'سجل التدقيق الأمني',
+    absenceStreakAlertTitle: 'تنبيه غياب 3 أيام متتالية',
+    absenceStreakAlertBody: 'تم تسجيل غياب الطالب {student} لمدة {days} أيام متتالية ({dates}). يرجى المتابعة والتواصل مع ولي الأمر.',
+    absenceStreakBannerSubtitle: 'رصدت خدمة المراقبة في الخلفية طلاباً غائبون 3 أيام متتالية أو أكثر.',
+    reviewAttendance: 'مراجعة الحضور',
+    enablePushAlerts: 'تفعيل الإشعارات الفورية',
+    pushAlertsActive: 'الإشعارات الفورية نشطة',
+    pushAlertsBlocked: 'الإشعارات محظورة في المتصفح',
+    dismissAllAlerts: 'إغلاق الكل',
   },
   en: {
     brandMain: 'GIDDU-GALA HIFZII QUR’AANAA AL-FURQAAN',
@@ -440,6 +457,14 @@ export const TRANSLATIONS: Record<MarkazLanguage, Record<string, string>> = {
     aiReportTopic: 'Report Focus',
     institutionSettings: 'Institution Settings',
     auditLogsTitle: 'Immutable Security Audit Log',
+    absenceStreakAlertTitle: '3-Day Consecutive Absence Alert',
+    absenceStreakAlertBody: '{student} has been marked absent for {days} consecutive days ({dates}). Please review attendance and follow up with guardian.',
+    absenceStreakBannerSubtitle: 'Background attendance monitor detected students with 3+ consecutive days of absence.',
+    reviewAttendance: 'Review Attendance',
+    enablePushAlerts: 'Enable Push Alerts',
+    pushAlertsActive: 'Push Alerts Active',
+    pushAlertsBlocked: 'Push Blocked in Browser',
+    dismissAllAlerts: 'Dismiss All',
   },
 };
 

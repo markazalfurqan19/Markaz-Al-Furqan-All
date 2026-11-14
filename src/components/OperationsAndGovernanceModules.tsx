@@ -2,21 +2,22 @@ import React, { useMemo, useState } from 'react';
 import { addDoc, collection, doc, increment, setDoc, updateDoc } from 'firebase/firestore';
 import QRCode from 'qrcode';
 import {
-  Award,
-  Bell,
-  BookMarked,
+  AlertTriangle,
+  BellRing,
   Download,
   FileSpreadsheet,
   FileText,
+  Presentation,
   Printer,
   Shield,
   Sparkles,
-  Users,
 } from 'lucide-react';
+import { BrowserPushPermission } from '../lib/attendanceMonitorService.ts';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase.ts';
 import {
   downloadCsvClient,
   downloadServerPdf,
+  downloadServerPptx,
   downloadServerXlsx,
   generateVerificationToken,
   getNextSequentialCode,
@@ -818,7 +819,9 @@ export const NotificationsModule: React.FC<{
   lang: MarkazLanguage;
   user: UserProfile;
   notifications: NotificationRecord[];
-}> = ({ lang, user, notifications }) => {
+  pushPermission?: BrowserPushPermission;
+  onEnablePush?: () => void;
+}> = ({ lang, user, notifications, pushPermission = 'default', onEnablePush }) => {
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
   const [channel, setChannel] = useState<'in_app' | 'sms' | 'email' | 'whatsapp'>('in_app');
@@ -849,6 +852,29 @@ export const NotificationsModule: React.FC<{
 
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#D6E3DA] bg-white px-4 py-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <BellRing className="h-4 w-4 text-[#145A32]" />
+          <span className="font-semibold text-[#0B3D2E]">
+            {pushPermission === 'granted'
+              ? t(lang, 'pushAlertsActive')
+              : pushPermission === 'denied'
+                ? t(lang, 'pushAlertsBlocked')
+                : t(lang, 'absenceStreakAlertTitle')}
+          </span>
+        </div>
+        {pushPermission === 'default' && onEnablePush && (
+          <button
+            type="button"
+            onClick={onEnablePush}
+            className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg bg-[#145A32] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#0B3D2E]"
+          >
+            <BellRing className="h-3.5 w-3.5" />
+            <span>{t(lang, 'enablePushAlerts')}</span>
+          </button>
+        )}
+      </div>
+
       {canSend && (
         <form
           onSubmit={handleSend}
@@ -907,17 +933,30 @@ export const NotificationsModule: React.FC<{
       )}
 
       <div className="space-y-2.5">
-        {notifications.map((n) => (
-          <div key={n.id} className="rounded-xl border border-[#D6E3DA] bg-white p-4 text-xs">
-            <div className="flex justify-between gap-2">
-              <h4 className="font-bold text-[#0B3D2E]">{n.title}</h4>
-              <span className="font-mono-tabular uppercase text-[#145A32]">
-                {n.channel} • {n.deliveryStatus}
-              </span>
+        {notifications.map((n) => {
+          const isAbsenceStreak = n.id.startsWith('abs3_');
+          return (
+            <div
+              key={n.id}
+              className={`rounded-xl border p-4 text-xs ${
+                isAbsenceStreak
+                  ? 'border-[#C49A45] bg-[#FFFBEB]'
+                  : 'border-[#D6E3DA] bg-white'
+              }`}
+            >
+              <div className="flex justify-between gap-2">
+                <h4 className="flex items-center gap-1.5 font-bold text-[#0B3D2E]">
+                  {isAbsenceStreak && <AlertTriangle className="h-3.5 w-3.5 text-[#B45309]" />}
+                  <span>{n.title}</span>
+                </h4>
+                <span className="font-mono-tabular uppercase text-[#145A32]">
+                  {n.channel} • {n.deliveryStatus}
+                </span>
+              </div>
+              <p className="mt-1 text-[#334E3F]">{n.message}</p>
             </div>
-            <p className="mt-1 text-[#334E3F]">{n.message}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
@@ -938,11 +977,36 @@ export const ReportsAndAiModule: React.FC<{
   const [topic, setTopic] = useState('executive');
   const [draftText, setDraftText] = useState<string | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
+  const [exportingType, setExportingType] = useState<'pdf' | 'pptx' | 'xlsx' | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  const exportPayload = useMemo(() => {
-    const columns = ['Code', 'Full Name', 'Track', 'Halaqah', 'Surah', 'Juz', 'Status'];
-    const rows = students.map((s) => [
+  const reportMeta = useMemo(() => {
+    const activeStudents = students.filter((s) => s.status === 'active');
+    const activePayments = payments.filter((p) => p.reversalStatus === 'active');
+    const presentCount = attendance.filter(
+      (a) => a.status === 'Present' || a.status === 'Late'
+    ).length;
+    const attendanceRate =
+      attendance.length > 0 ? Math.round((presentCount / attendance.length) * 100) : 0;
+    const tuitionTotal = activePayments.reduce((a, b) => a + b.amountETB, 0);
+
+    const kpis = [
+      { label: t(lang, 'kpiActiveStudents'), value: String(activeStudents.length) },
+      { label: t(lang, 'kpiAttendanceRate'), value: `${attendanceRate}%` },
+      { label: t(lang, 'kpiMonthlyRevenue'), value: formatETB(tuitionTotal, lang) },
+      {
+        label: t(lang, 'kpiActiveSponsors'),
+        value: String(sponsors.filter((sp) => sp.status === 'active').length),
+      },
+      { label: 'Total Hifz Logs', value: String(hifzLogs.length) },
+      {
+        label: 'Mumtaz Evaluations',
+        value: String(hifzLogs.filter((l) => l.grade === 'Mumtaz').length),
+      },
+    ];
+
+    let columns: string[] = ['Code', 'Full Name', 'Track', 'Halaqah', 'Surah', 'Juz', 'Status'];
+    let rows: (string | number)[][] = students.map((s) => [
       s.code,
       s.fullName,
       s.track,
@@ -951,16 +1015,60 @@ export const ReportsAndAiModule: React.FC<{
       s.juzLevel,
       s.status,
     ]);
-    return { columns, rows };
-  }, [students]);
+    let sheetName = 'AlFurqaanStudents';
 
-  const handleGenerateAiDraft = async () => {
-    setAiLoading(true);
-    setAiError(null);
-    try {
-      const activeStudents = students.filter((s) => s.status === 'active');
-      const activePayments = payments.filter((p) => p.reversalStatus === 'active');
-      const aggregates = {
+    if (topic === 'hifz_academic') {
+      columns = ['Date', 'Student', 'Halaqah', 'Surah', 'Sabaq', 'Pages', 'Grade'];
+      rows = hifzLogs.slice(0, 80).map((l) => [
+        l.date,
+        l.studentName,
+        l.halaqahId || '-',
+        l.currentSurah,
+        l.sabaqRange,
+        l.sabaqPages,
+        l.grade,
+      ]);
+      sheetName = 'HifzProgress';
+    } else if (topic === 'attendance_followup') {
+      columns = ['Date', 'Type', 'Code', 'Name', 'Status', 'Verification', 'Session'];
+      rows = attendance.slice(0, 80).map((a) => [
+        a.date,
+        a.recordType,
+        a.targetCode || '-',
+        a.targetName,
+        a.status,
+        a.qrVerified ? 'QR Verified' : 'Manual',
+        a.session,
+      ]);
+      sheetName = 'AttendanceLog';
+    } else if (topic === 'finance_summary') {
+      columns = ['Receipt #', 'Date', 'Student', 'Payer', 'Channel', 'Amount ETB', 'Status'];
+      rows = payments.slice(0, 80).map((p) => [
+        p.receiptNo,
+        p.transactionDate,
+        p.studentName,
+        p.payerName,
+        p.method,
+        p.amountETB,
+        p.reversalStatus,
+      ]);
+      sheetName = 'FinanceReceipts';
+    }
+
+    const topicLabels: Record<string, string> = {
+      executive: 'Executive Markaz Overview Report',
+      hifz_academic: 'Hifz & Academic Progress Report',
+      attendance_followup: 'Attendance & At-Risk Follow-up Report',
+      finance_summary: 'Tuition & Kafalat Summary Report',
+    };
+
+    return {
+      title: topicLabels[topic] || 'Al-Furqaan Markaz Report',
+      sheetName,
+      kpis,
+      columns,
+      rows,
+      aggregates: {
         totalActiveStudents: activeStudents.length,
         maleStudents: activeStudents.filter((s) => s.gender === 'male').length,
         femaleStudents: activeStudents.filter((s) => s.gender === 'female').length,
@@ -968,15 +1076,21 @@ export const ReportsAndAiModule: React.FC<{
         mumtazLogs: hifzLogs.filter((l) => l.grade === 'Mumtaz').length,
         needsRevisionFlags: hifzLogs.filter((l) => l.grade === 'Needs Revision').length,
         attendanceTotalEntries: attendance.length,
-        attendancePresentCount: attendance.filter((a) => a.status === 'Present').length,
-        tuitionCollectedETB: activePayments.reduce((a, b) => a + b.amountETB, 0),
+        attendancePresentCount: presentCount,
+        tuitionCollectedETB: tuitionTotal,
         activeSponsorsCount: sponsors.filter((sp) => sp.status === 'active').length,
-      };
+      },
+    };
+  }, [students, attendance, hifzLogs, payments, sponsors, topic, lang]);
 
+  const handleGenerateAiDraft = async () => {
+    setAiLoading(true);
+    setAiError(null);
+    try {
       const res = await fetch('/api/v1/ai/report-draft', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language: lang, topic, aggregates }),
+        body: JSON.stringify({ language: lang, topic, aggregates: reportMeta.aggregates }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'AI generation failed');
@@ -995,6 +1109,88 @@ export const ReportsAndAiModule: React.FC<{
     }
   };
 
+  const handleBuildStructuredDraft = () => {
+    setAiError(null);
+    const agg = reportMeta.aggregates;
+    const summaryLines = [
+      reportMeta.title,
+      `Institution: ${t(lang, 'brandMain')} (${t(lang, 'brandLocation')})`,
+      `Date: ${todayISOEthiopia()}`,
+      '',
+      'Executive Summary',
+      `As of ${todayISOEthiopia()}, Al-Furqaan Markaz records ${agg.totalActiveStudents} active learners (${agg.maleStudents} male, ${agg.femaleStudents} female), an attendance rate of ${reportMeta.kpis[1]?.value || '0%'}, and ${formatETB(agg.tuitionCollectedETB, lang)} in active tuition receipts.`,
+      '',
+      'Key Verified Observations',
+      `- Total daily Hifz evaluations recorded: ${agg.totalHifzLogs} (${agg.mumtazLogs} Mumtaz, ${agg.needsRevisionFlags} Needs Revision flags).`,
+      `- Active Kafalat sponsorships linked: ${agg.activeSponsorsCount}.`,
+      `- Attendance entries audited: ${agg.attendancePresentCount} present/late out of ${agg.attendanceTotalEntries} total entries.`,
+      '',
+      'Recommended Follow-Up Actions',
+      '- Review learners marked Needs Revision with their assigned Mu’allim for Sabqi & Manzil reinforcement.',
+      '- Reconcile daily tuition receipts and follow up on pending admissions in the Registrar queue.',
+    ];
+    setDraftText(summaryLines.join('\n'));
+  };
+
+  const handleDownloadPdf = async (includeDraft: boolean) => {
+    setExportingType('pdf');
+    setAiError(null);
+    try {
+      await downloadServerPdf({
+        title: reportMeta.title,
+        subtitle: t(lang, 'brandLocation'),
+        language: lang,
+        narrativeText: includeDraft ? draftText || undefined : undefined,
+        kpis: reportMeta.kpis,
+        columns: reportMeta.columns,
+        rows: reportMeta.rows,
+        filename: `alfurqaan-${topic}-report.pdf`,
+      });
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'PDF export failed');
+    } finally {
+      setExportingType(null);
+    }
+  };
+
+  const handleDownloadPptx = async (includeDraft: boolean) => {
+    setExportingType('pptx');
+    setAiError(null);
+    try {
+      await downloadServerPptx({
+        title: reportMeta.title,
+        subtitle: t(lang, 'brandLocation'),
+        language: lang,
+        narrativeText: includeDraft ? draftText || undefined : undefined,
+        kpis: reportMeta.kpis,
+        columns: reportMeta.columns,
+        rows: reportMeta.rows,
+        filename: `alfurqaan-${topic}-deck.pptx`,
+      });
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'PowerPoint export failed');
+    } finally {
+      setExportingType(null);
+    }
+  };
+
+  const handleDownloadXlsx = async () => {
+    setExportingType('xlsx');
+    setAiError(null);
+    try {
+      await downloadServerXlsx({
+        sheetName: reportMeta.sheetName,
+        columns: reportMeta.columns,
+        rows: reportMeta.rows,
+        filename: `alfurqaan-${topic}.xlsx`,
+      });
+    } catch (err) {
+      setAiError(err instanceof Error ? err.message : 'XLSX export failed');
+    } finally {
+      setExportingType(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Official Exports Card */}
@@ -1003,7 +1199,7 @@ export const ReportsAndAiModule: React.FC<{
           <MarkazCrest size={42} />
           <div>
             <h3 className="font-display text-sm font-bold text-[#0B3D2E]">
-              Official Markaz Exports (CSV / XLSX / PDF)
+              Official Markaz Exports (CSV / XLSX / PDF / Editable PPTX)
             </h3>
             <p className="text-xs text-[#4A6355]">
               Exported figures match live Firestore aggregate records with official Al-Furqaan
@@ -1015,44 +1211,42 @@ export const ReportsAndAiModule: React.FC<{
           <button
             type="button"
             onClick={() =>
-              downloadCsvClient('alfurqaan-students.csv', exportPayload.columns, exportPayload.rows)
+              downloadCsvClient(`alfurqaan-${topic}.csv`, reportMeta.columns, reportMeta.rows)
             }
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[#D6E3DA] bg-[#F9FBF9] px-4 py-2 text-xs font-bold text-[#0B3D2E] hover:border-[#145A32]"
+            className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border border-[#D6E3DA] bg-[#F9FBF9] px-4 py-2 text-xs font-bold text-[#0B3D2E] hover:border-[#145A32]"
           >
             <Download className="h-4 w-4" /> {t(lang, 'exportCsv')}
           </button>
           <button
             type="button"
-            onClick={() =>
-              downloadServerXlsx({
-                sheetName: 'AlFurqaanStudents',
-                columns: exportPayload.columns,
-                rows: exportPayload.rows,
-                filename: 'alfurqaan-students.xlsx',
-              })
-            }
-            className="inline-flex items-center gap-1.5 rounded-lg border border-[#D6E3DA] bg-[#F9FBF9] px-4 py-2 text-xs font-bold text-[#0B3D2E] hover:border-[#145A32]"
+            disabled={exportingType !== null}
+            onClick={handleDownloadXlsx}
+            className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border border-[#D6E3DA] bg-[#F9FBF9] px-4 py-2 text-xs font-bold text-[#0B3D2E] hover:border-[#145A32] disabled:opacity-60"
           >
             <FileSpreadsheet className="h-4 w-4 text-[#145A32]" /> {t(lang, 'exportXlsx')}
           </button>
           <button
             type="button"
-            onClick={() =>
-              downloadServerPdf({
-                title: 'Student Directory & Hifz Progress Summary',
-                columns: exportPayload.columns,
-                rows: exportPayload.rows,
-                filename: 'alfurqaan-report.pdf',
-              })
-            }
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#145A32] px-4 py-2 text-xs font-bold text-white hover:bg-[#0B3D2E]"
+            disabled={exportingType !== null}
+            onClick={() => handleDownloadPdf(Boolean(draftText))}
+            className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg bg-[#145A32] px-4 py-2 text-xs font-bold text-white hover:bg-[#0B3D2E] disabled:opacity-60"
           >
-            <FileText className="h-4 w-4" /> {t(lang, 'exportPdf')}
+            <FileText className="h-4 w-4" />
+            <span>{exportingType === 'pdf' ? t(lang, 'loading') : t(lang, 'exportPdf')}</span>
+          </button>
+          <button
+            type="button"
+            disabled={exportingType !== null}
+            onClick={() => handleDownloadPptx(Boolean(draftText))}
+            className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg bg-[#C49A45] px-4 py-2 text-xs font-bold text-[#0B3D2E] hover:bg-[#D5AE5C] disabled:opacity-60"
+          >
+            <Presentation className="h-4 w-4" />
+            <span>{exportingType === 'pptx' ? t(lang, 'loading') : 'Export PPTX (.pptx)'}</span>
           </button>
         </div>
       </div>
 
-      {/* Server-Side Gemini AI Assistant */}
+      {/* Report Composer & Server-Side Gemini AI Assistant */}
       <div className="rounded-xl border border-[#C49A45]/60 bg-white p-5 space-y-4">
         <div className="flex items-center gap-3">
           <MarkazCrest size={42} />
@@ -1079,10 +1273,18 @@ export const ReportsAndAiModule: React.FC<{
             type="button"
             disabled={aiLoading}
             onClick={handleGenerateAiDraft}
-            className="inline-flex items-center gap-2 rounded-lg bg-[#C49A45] px-5 py-2 text-xs font-bold text-[#0B3D2E] hover:bg-[#D5AE5C] disabled:opacity-60"
+            className="inline-flex min-h-[38px] items-center gap-2 rounded-lg bg-[#C49A45] px-5 py-2 text-xs font-bold text-[#0B3D2E] hover:bg-[#D5AE5C] disabled:opacity-60"
           >
             <Sparkles className="h-4 w-4" />
             <span>{aiLoading ? t(lang, 'loading') : t(lang, 'generateAiDraft')}</span>
+          </button>
+          <button
+            type="button"
+            onClick={handleBuildStructuredDraft}
+            className="inline-flex min-h-[38px] items-center gap-1.5 rounded-lg border border-[#145A32]/40 bg-[#EAF3ED] px-4 py-2 text-xs font-bold text-[#145A32] hover:bg-[#DCEBE1]"
+          >
+            <FileText className="h-4 w-4" />
+            <span>Build Live Stats Summary</span>
           </button>
         </div>
 
@@ -1092,26 +1294,50 @@ export const ReportsAndAiModule: React.FC<{
           </div>
         )}
 
-        {draftText && (
-          <div className="print-container rounded-xl border border-[#D6E3DA] bg-[#FBFDFB] p-5">
-            <div className="mb-3 flex items-center justify-between border-b border-[#EAF3ED] pb-2">
+        {draftText !== null && (
+          <div className="print-container rounded-xl border border-[#D6E3DA] bg-[#FBFDFB] p-5 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#EAF3ED] pb-3">
               <div className="flex items-center gap-2.5">
                 <MarkazCrest size={32} />
                 <span className="text-xs font-bold text-[#0B3D2E]">
-                  AI-Assisted Narrative Draft (Requires Management Approval)
+                  Editable Report Draft (Human Review Required)
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => window.print()}
-                className="no-print rounded border border-[#D6E3DA] px-2.5 py-1 text-[11px] font-semibold"
-              >
-                {t(lang, 'print')}
-              </button>
+              <div className="no-print flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={exportingType !== null}
+                  onClick={() => handleDownloadPptx(true)}
+                  className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg bg-[#C49A45] px-3 py-1.5 text-[11px] font-bold text-[#0B3D2E] hover:bg-[#D5AE5C] disabled:opacity-60"
+                >
+                  <Presentation className="h-3.5 w-3.5" />
+                  <span>{exportingType === 'pptx' ? t(lang, 'loading') : 'Download .pptx'}</span>
+                </button>
+                <button
+                  type="button"
+                  disabled={exportingType !== null}
+                  onClick={() => handleDownloadPdf(true)}
+                  className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg bg-[#145A32] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#0B3D2E] disabled:opacity-60"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  <span>{exportingType === 'pdf' ? t(lang, 'loading') : 'Download .pdf'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="inline-flex min-h-[34px] items-center gap-1 rounded-lg border border-[#D6E3DA] bg-white px-2.5 py-1.5 text-[11px] font-semibold"
+                >
+                  <Printer className="h-3.5 w-3.5" />
+                  <span>{t(lang, 'print')}</span>
+                </button>
+              </div>
             </div>
-            <pre className="whitespace-pre-wrap font-sans text-xs leading-relaxed text-[#0E2419]">
-              {draftText}
-            </pre>
+            <textarea
+              value={draftText}
+              onChange={(e) => setDraftText(e.target.value)}
+              rows={12}
+              className="w-full rounded-lg border border-[#D6E3DA] bg-white p-3 font-sans text-xs leading-relaxed text-[#0E2419] outline-none focus:border-[#145A32]"
+            />
           </div>
         )}
       </div>

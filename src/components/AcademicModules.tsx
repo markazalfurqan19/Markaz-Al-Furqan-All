@@ -15,6 +15,7 @@ import {
   UserCheck,
   X,
 } from 'lucide-react';
+import { detectThreeDayConsecutiveAbsences } from '../lib/attendanceMonitorService.ts';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase.ts';
 import { getNextSequentialCode, logAuditEvent } from '../lib/markazDb.ts';
 import { t } from '../shared/i18n.ts';
@@ -1177,6 +1178,14 @@ export const AttendanceModule: React.FC<{
 
   const canMark = ['super_admin', 'director', 'registrar', 'muallim'].includes(user.role);
 
+  const streakByStudentId = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const alert of detectThreeDayConsecutiveAbsences(attendance, students)) {
+      map.set(alert.studentId, alert.consecutiveDays);
+    }
+    return map;
+  }, [attendance, students]);
+
   const targets = useMemo(() => {
     if (mode === 'staff') return staff.filter((st) => st.employmentStatus === 'active');
     return students.filter((s) => {
@@ -1332,6 +1341,11 @@ export const AttendanceModule: React.FC<{
                     {existingToday && (
                       <span className="ml-2 rounded bg-[#EAF3ED] px-2 py-0.5 text-[10px] font-bold text-[#145A32]">
                         {existingToday.status}
+                      </span>
+                    )}
+                    {mode === 'student' && streakByStudentId.has(item.id) && (
+                      <span className="ml-2 rounded bg-[#FEF3C7] px-2 py-0.5 font-mono-tabular text-[10px] font-bold text-[#B45309]">
+                        {streakByStudentId.get(item.id)}d {t(lang, 'absent')}
                       </span>
                     )}
                   </div>

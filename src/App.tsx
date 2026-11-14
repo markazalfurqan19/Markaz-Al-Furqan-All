@@ -16,6 +16,7 @@ import {
 import {
   Award,
   Bell,
+  BellRing,
   BookMarked,
   BookOpen,
   CalendarCheck,
@@ -56,8 +57,10 @@ import {
   SettingsAndAuditModule,
   StaffModule,
 } from './components/OperationsAndGovernanceModules.tsx';
+import { AbsenceAlertOverlay } from './components/AbsenceAlertOverlay.tsx';
 import { PublicPortalView } from './components/PublicPortalView.tsx';
 import { MarkazCrest, OfflineIndicator, PWAInstallButton } from './components/PwaControls.tsx';
+import { useAbsenceAlertBackgroundService } from './lib/attendanceMonitorService.ts';
 import {
   db,
   firebaseAuth,
@@ -364,6 +367,21 @@ function MarkazWorkspace() {
     }
   };
 
+  const {
+    consecutiveAlerts,
+    toasts: absenceToasts,
+    dismissToast,
+    clearAllToasts,
+    pushPermission,
+    requestPushPermission,
+  } = useAbsenceAlertBackgroundService({
+    userProfile,
+    lang,
+    students,
+    attendance,
+    notifications,
+  });
+
   const allowedNavs = useMemo(
     () => (userProfile ? ROLE_NAV_ACCESS[userProfile.role] || ['dashboard'] : []),
     [userProfile]
@@ -550,6 +568,25 @@ function MarkazWorkspace() {
                   </button>
                 ))}
               </div>
+              {pushPermission === 'default' && (
+                <button
+                  type="button"
+                  onClick={() => void requestPushPermission()}
+                  className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg border border-[#C49A45]/60 bg-[#FBF8EE] px-2.5 py-1 text-[11px] font-semibold text-[#7A5915] hover:bg-[#F7EED6]"
+                >
+                  <BellRing className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{t(lang, 'enablePushAlerts')}</span>
+                </button>
+              )}
+              {pushPermission === 'granted' && (
+                <span
+                  title={t(lang, 'pushAlertsActive')}
+                  className="hidden items-center gap-1 rounded-lg border border-[#145A32]/30 bg-[#EAF3ED] px-2 py-1 text-[11px] font-semibold text-[#145A32] md:inline-flex"
+                >
+                  <BellRing className="h-3 w-3" />
+                  <span>{t(lang, 'pushAlertsActive')}</span>
+                </span>
+              )}
               <PWAInstallButton lang={lang} />
               <div className="hidden items-center gap-2 rounded-lg border border-[#D6E3DA] bg-[#F9FBF9] px-2.5 py-1 sm:flex">
                 <MarkazCrest size={24} />
@@ -578,6 +615,9 @@ function MarkazWorkspace() {
                 donations={donations}
                 admissions={admissions}
                 staff={staff}
+                consecutiveAlerts={consecutiveAlerts}
+                pushPermission={pushPermission}
+                onEnablePush={() => void requestPushPermission()}
                 onNavigate={setActiveNav}
               />
             )}
@@ -709,6 +749,8 @@ function MarkazWorkspace() {
                 lang={lang}
                 user={userProfile}
                 notifications={notifications}
+                pushPermission={pushPermission}
+                onEnablePush={() => void requestPushPermission()}
               />
             )}
 
@@ -759,6 +801,17 @@ function MarkazWorkspace() {
           );
         })}
       </nav>
+      {/* Global Dashboard / Workspace Absence Alert Toast Stack */}
+      <AbsenceAlertOverlay
+        lang={lang}
+        toasts={absenceToasts}
+        pushPermission={pushPermission}
+        canViewAttendance={allowedNavs.includes('attendance')}
+        onDismiss={dismissToast}
+        onClearAll={clearAllToasts}
+        onNavigate={setActiveNav}
+        onEnablePush={() => void requestPushPermission()}
+      />
     </div>
   );
 }

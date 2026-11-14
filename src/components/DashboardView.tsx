@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Award,
+  BellRing,
   BookOpen,
   CalendarCheck,
   Coins,
@@ -18,6 +19,10 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import {
+  BrowserPushPermission,
+  ConsecutiveAbsenceAlert,
+} from '../lib/attendanceMonitorService.ts';
 import { initializeStarterMarkazWorkspace } from '../lib/markazDb.ts';
 import { t } from '../shared/i18n.ts';
 import { formatETB, todayISOEthiopia } from '../shared/quranData.ts';
@@ -54,6 +59,9 @@ interface DashboardViewProps {
   donations: Donation[];
   admissions: AdmissionApplication[];
   staff: StaffMember[];
+  consecutiveAlerts?: ConsecutiveAbsenceAlert[];
+  pushPermission?: BrowserPushPermission;
+  onEnablePush?: () => void;
   onNavigate: (tab: NavSectionId) => void;
 }
 
@@ -71,6 +79,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   donations,
   admissions,
   staff,
+  consecutiveAlerts = [],
+  pushPermission = 'default',
+  onEnablePush,
   onNavigate,
 }) => {
   const [initializing, setInitializing] = useState(false);
@@ -221,6 +232,77 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {initMessage && (
         <div className="rounded-xl border border-[#145A32]/30 bg-[#EAF3ED] px-4 py-3 text-xs font-medium text-[#0B3D2E]">
           {initMessage}
+        </div>
+      )}
+
+      {/* 3-Day Consecutive Absence Alert Banner */}
+      {consecutiveAlerts.length > 0 && (
+        <div
+          role="region"
+          aria-label={t(lang, 'absenceStreakAlertTitle')}
+          className="rounded-xl border-2 border-[#C49A45] bg-[#FFFBEB] p-4"
+        >
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#FEF3C7] text-[#B45309]">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="font-display text-sm font-bold text-[#78350F]">
+                  {t(lang, 'absenceStreakAlertTitle')} ({consecutiveAlerts.length})
+                </h3>
+                <p className="mt-0.5 text-xs text-[#92400E]">
+                  {t(lang, 'absenceStreakBannerSubtitle')}
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {pushPermission === 'default' && onEnablePush && (
+                <button
+                  type="button"
+                  onClick={onEnablePush}
+                  className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg border border-[#C49A45] bg-white px-3 py-1.5 text-xs font-semibold text-[#78350F] hover:bg-[#FEF3C7]"
+                >
+                  <BellRing className="h-3.5 w-3.5" />
+                  <span>{t(lang, 'enablePushAlerts')}</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => onNavigate('attendance')}
+                className="inline-flex min-h-[34px] items-center gap-1.5 rounded-lg bg-[#145A32] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#0B3D2E]"
+              >
+                <CalendarCheck className="h-3.5 w-3.5" />
+                <span>{t(lang, 'reviewAttendance')}</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {consecutiveAlerts.slice(0, 6).map((alert) => (
+              <div
+                key={alert.alertKey}
+                className="flex items-center justify-between gap-2 rounded-lg border border-[#F59E0B]/40 bg-white px-3 py-2 text-xs"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-[#0B3D2E]">
+                    {alert.studentName}
+                  </p>
+                  <p className="font-mono-tabular text-[11px] text-[#4A6355]">
+                    {alert.studentCode || alert.studentId}
+                  </p>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="inline-block rounded bg-[#FEF3C7] px-2 py-0.5 font-mono-tabular text-[10px] font-bold text-[#B45309]">
+                    {alert.consecutiveDays}d
+                  </span>
+                  <p className="mt-0.5 font-mono-tabular text-[10px] text-[#78350F]">
+                    {alert.dates[0]} → {alert.dates[2]}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
