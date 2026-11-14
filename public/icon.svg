@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="medallion" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#9BE8C5" />
+      <stop offset="100%" stop-color="#6FCFA4" />
+    </radialGradient>
+    <linearGradient id="rehalWood" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6B4226" />
+      <stop offset="100%" stop-color="#3E2312" />
+    </linearGradient>
+    <linearGradient id="pageShade" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#EDE2C5" />
+      <stop offset="50%" stop-color="#FFFDF4" />
+      <stop offset="100%" stop-color="#E7DAC0" />
+    </linearGradient>
+    <path id="topArc" d="M 52,256 A 204,204 0 1,1 460,256" />
+    <path id="bottomArc" d="M 48,266 A 208,208 0 0,0 464,266" />
+  </defs>
+
+  <!-- Outer Crisp Ring -->
+  <circle cx="256" cy="256" r="248" fill="#FFFFFF" stroke="#9EA4A0" stroke-width="8" />
+  <circle cx="256" cy="256" r="240" fill="#FFFFFF" stroke="#111111" stroke-width="2" />
+
+  <!-- Top Arabic Curved Title -->
+  <text fill="#381A0E" font-family="'Noto Naskh Arabic', 'DejaVu Sans', serif" font-size="23" font-weight="700" text-anchor="middle">
+    <textPath href="#topArc" startOffset="50%" side="left">مركز الفرقان لتحفيظ القرآن الكريم – جرو – إثيوبيا</textPath>
+  </text>
+
+  <!-- Bottom English Curved Title -->
+  <text fill="#1D1D1D" font-family="'Plus Jakarta Sans', 'Noto Sans', Arial, sans-serif" font-size="18.5" font-weight="800" letter-spacing="1.2" text-anchor="middle">
+    <textPath href="#bottomArc" startOffset="50%">AL-FURQAN QURAN MEMORIZATION CENTER - CHIRO - ETHIOPIA</textPath>
+  </text>
+
+  <!-- Left & Right Allah Seal Badges -->
+  <g transform="translate(46,274)">
+    <circle cx="0" cy="0" r="16" fill="#FFFFFF" stroke="#111111" stroke-width="2" />
+    <text x="0" y="6" text-anchor="middle" fill="#111111" font-family="'Noto Naskh Arabic', serif" font-size="14" font-weight="700">الله</text>
+  </g>
+  <g transform="translate(466,274)">
+    <circle cx="0" cy="0" r="16" fill="#FFFFFF" stroke="#111111" stroke-width="2" />
+    <text x="0" y="6" text-anchor="middle" fill="#111111" font-family="'Noto Naskh Arabic', serif" font-size="14" font-weight="700">الله</text>
+  </g>
+
+  <!-- Inner Mint-Green Medallion -->
+  <circle cx="256" cy="256" r="174" fill="url(#medallion)" stroke="#111111" stroke-width="7" />
+  <circle cx="256" cy="256" r="167" fill="none" stroke="#FFFFFF" stroke-width="2" opacity="0.7" />
+
+  <!-- Central Calligraphy: القرءان -->
+  <text x="256" y="218" text-anchor="middle" fill="#0B0F0D" stroke="#FFFFFF" stroke-width="5" paint-order="stroke" font-family="'Noto Naskh Arabic', 'Amiri', serif" font-size="78" font-weight="700">القرءان</text>
+
+  <!-- Left Golden Torch -->
+  <g transform="translate(122,238)">
+    <path d="M 0,-36 C 14,-22 14,-4 4,4 C 12,-8 6,-18 0,-24 C -6,-16 -8,-4 -2,4 C -14,-4 -12,-22 0,-36 Z" fill="#F97316" stroke="#111111" stroke-width="2" />
+    <path d="M 0,-22 C 6,-14 6,-4 0,2 C -6,-4 -6,-14 0,-22 Z" fill="#FDE047" />
+    <rect x="-15" y="4" width="30" height="8" rx="2" fill="#E5A93B" stroke="#111111" stroke-width="2" />
+    <polygon points="-12,12 12,12 6,46 -6,46" fill="#D4952A" stroke="#111111" stroke-width="2" />
+    <line x1="-5" y1="16" x2="-3" y2="42" stroke="#FFF4CC" stroke-width="2" />
+    <line x1="4" y1="16" x2="2" y2="42" stroke="#7A4F10" stroke-width="2" />
+  </g>
+
+  <!-- Right Golden Torch -->
+  <g transform="translate(390,238)">
+    <path d="M 0,-36 C 14,-22 14,-4 4,4 C 12,-8 6,-18 0,-24 C -6,-16 -8,-4 -2,4 C -14,-4 -12,-22 0,-36 Z" fill="#F97316" stroke="#111111" stroke-width="2" />
+    <path d="M 0,-22 C 6,-14 6,-4 0,2 C -6,-4 -6,-14 0,-22 Z" fill="#FDE047" />
+    <rect x="-15" y="4" width="30" height="8" rx="2" fill="#E5A93B" stroke="#111111" stroke-width="2" />
+    <polygon points="-12,12 12,12 6,46 -6,46" fill="#D4952A" stroke="#111111" stroke-width="2" />
+    <line x1="-5" y1="16" x2="-3" y2="42" stroke="#FFF4CC" stroke-width="2" />
+    <line x1="4" y1="16" x2="2" y2="42" stroke="#7A4F10" stroke-width="2" />
+  </g>
+
+  <!-- Open Mushaf on Wooden Rehal -->
+  <g transform="translate(256,336)">
+    <!-- Rehal Stand -->
+    <polygon points="-92,16 -14,34 -14,54 -92,38" fill="url(#rehalWood)" stroke="#1E1108" stroke-width="2" />
+    <polygon points="92,16 14,34 14,54 92,38" fill="url(#rehalWood)" stroke="#1E1108" stroke-width="2" />
+    <polygon points="-106,-10 -6,28 -6,42 -106,6" fill="#5A3720" stroke="#1E1108" stroke-width="2" />
+    <polygon points="106,-10 6,28 6,42 106,6" fill="#4D2D19" stroke="#1E1108" stroke-width="2" />
+    <circle cx="0" cy="36" r="8" fill="#C49A45" stroke="#1E1108" stroke-width="2" />
+
+    <!-- Open Mushaf Pages -->
+    <path d="M -88,-54 Q -44,-66 0,-46 Q 44,-66 88,-54 L 82,16 Q 40,2 0,18 Q -40,2 -82,16 Z" fill="url(#pageShade)" stroke="#3B2412" stroke-width="2.5" />
+    <!-- Spine -->
+    <line x1="0" y1="-46" x2="0" y2="18" stroke="#8C6B32" stroke-width="2" />
+    <!-- Ornamental Borders on Left & Right Pages -->
+    <rect x="-74" y="-44" width="60" height="46" rx="2" fill="none" stroke="#C49A45" stroke-width="2" />
+    <rect x="14" y="-44" width="60" height="46" rx="2" fill="none" stroke="#C49A45" stroke-width="2" />
+    <!-- Script Lines -->
+    <g stroke="#5C4D3C" stroke-width="1.5" opacity="0.65">
+      <line x1="-66" y1="-34" x2="-22" y2="-34" />
+      <line x1="-66" y1="-26" x2="-22" y2="-26" />
+      <line x1="-66" y1="-18" x2="-22" y2="-18" />
+      <line x1="-66" y1="-10" x2="-22" y2="-10" />
+      <line x1="22" y1="-34" x2="66" y2="-34" />
+      <line x1="22" y1="-26" x2="66" y2="-26" />
+      <line x1="22" y1="-18" x2="66" y2="-18" />
+      <line x1="22" y1="-10" x2="66" y2="-10" />
+    </g>
+    <!-- Green & Red Ribbon Bookmarks -->
+    <polygon points="-6,16 0,16 0,34 -3,30 -6,34" fill="#145A32" />
+    <polygon points="3,16 9,16 9,32 6,28 3,32" fill="#B91C1C" />
+  </g>
+</svg>

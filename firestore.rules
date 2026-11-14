@@ -1,0 +1,524 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isBootstrappedSuperAdmin() {
+      return isAuthenticated() &&
+             request.auth.token.email == "markazalfurqan19@gmail.com";
+    }
+
+    function userExists() {
+      return isAuthenticated() &&
+             exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isActiveUser() {
+      return isBootstrappedSuperAdmin() || (userExists() && userDoc().active == true);
+    }
+
+    function hasRole(roleList) {
+      return isBootstrappedSuperAdmin() || (isActiveUser() && userDoc().role in roleList);
+    }
+
+    function isSuperAdmin() {
+      return hasRole(['super_admin']);
+    }
+
+    function isManagement() {
+      return hasRole(['super_admin', 'director']);
+    }
+
+    function isRegistrar() {
+      return hasRole(['super_admin', 'director', 'registrar']);
+    }
+
+    function isMuallim() {
+      return hasRole(['super_admin', 'director', 'muallim']);
+    }
+
+    function isExaminer() {
+      return hasRole(['super_admin', 'director', 'examiner']);
+    }
+
+    function isAccountant() {
+      return hasRole(['super_admin', 'director', 'accountant']);
+    }
+
+    function isKafalatOfficer() {
+      return hasRole(['super_admin', 'director', 'kafalat_officer']);
+    }
+
+    function isLibrarian() {
+      return hasRole(['super_admin', 'director', 'librarian']);
+    }
+
+    function isGuardian() {
+      return isActiveUser() && userDoc().role == 'guardian';
+    }
+
+    function isAuditor() {
+      return isActiveUser() && userDoc().role == 'auditor';
+    }
+
+    function isStaffAny() {
+      return hasRole([
+        'super_admin',
+        'director',
+        'registrar',
+        'muallim',
+        'examiner',
+        'accountant',
+        'kafalat_officer',
+        'librarian'
+      ]);
+    }
+
+    function isAssignedHalaqah(halaqahId) {
+      return isActiveUser() &&
+             userDoc().role == 'muallim' &&
+             'assignedHalaqahIds' in userDoc() &&
+             halaqahId in userDoc().assignedHalaqahIds;
+    }
+
+    function isLinkedStudent(studentId) {
+      return isGuardian() &&
+             'linkedStudentIds' in userDoc() &&
+             studentId in userDoc().linkedStudentIds;
+    }
+
+    function isValidString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isPositiveNumber(val) {
+      return (val is int || val is float) && val >= 0;
+    }
+
+    // ===============================================================
+    // Connection Health Check
+    // ===============================================================
+    match /test/connection {
+      allow get: if request.auth != null || !exists(/databases/$(database)/documents/test/connection);
+      allow list, write: if isManagement();
+    }
+
+    // ===============================================================
+    // Users & RBAC Profiles
+    // ===============================================================
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        isManagement() ||
+        isRegistrar() ||
+        isAuditor()
+      );
+
+      allow create: if isAuthenticated() && request.auth.uid == userId && (
+        (
+          isBootstrappedSuperAdmin() &&
+          request.resource.data.uid == userId &&
+          request.resource.data.role == 'super_admin' &&
+          request.resource.data.active == true
+        ) ||
+        (
+          request.resource.data.uid == userId &&
+          request.resource.data.role == 'guardian' &&
+          request.resource.data.active == true &&
+          isValidString(request.resource.data.displayName, 1, 120) &&
+          isValidString(request.resource.data.email, 3, 180)
+        )
+      );
+
+      allow update: if isAuthenticated() && (
+        isSuperAdmin() ||
+        (
+          isManagement() &&
+          request.resource.data.role != 'super_admin'
+        ) ||
+        (
+          request.auth.uid == userId &&
+          request.resource.data.uid == resource.data.uid &&
+          request.resource.data.role == resource.data.role &&
+          request.resource.data.active == resource.data.active &&
+          request.resource.data.get('assignedHalaqahIds', []) == resource.data.get('assignedHalaqahIds', []) &&
+          request.resource.data.get('linkedStudentIds', []) == resource.data.get('linkedStudentIds', []) &&
+          isValidString(request.resource.data.displayName, 1, 120)
+        )
+      );
+
+      allow delete: if isSuperAdmin() && request.auth.uid != userId;
+    }
+
+    // ===============================================================
+    // Students
+    // ===============================================================
+    match /students/{studentId} {
+      allow read: if isAuthenticated() && (
+        hasRole(['super_admin', 'director', 'registrar', 'examiner', 'accountant', 'kafalat_officer', 'librarian', 'auditor']) ||
+        isAssignedHalaqah(resource.data.get('halaqahId', '')) ||
+        isLinkedStudent(studentId)
+      );
+
+      allow create: if isRegistrar() &&
+        isValidString(request.resource.data.code, 8, 32) &&
+        request.resource.data.code.matches('^AFQ-[0-9]{4}-[0-9]{6}$') &&
+        isValidString(request.resource.data.fullName, 2, 120) &&
+        request.resource.data.gender in ['male', 'female'] &&
+        request.resource.data.track in ['full_hifz', 'part_time_hifz', 'nazirah_tajweed', 'islamic_studies'] &&
+        request.resource.data.status in ['active', 'pending', 'suspended', 'withdrawn', 'graduated', 'archived'] &&
+        isValidString(request.resource.data.guardianName, 2, 120) &&
+        isValidString(request.resource.data.guardianPhone, 6, 32);
+
+      allow update: if (
+        (isRegistrar() &&
+          isValidString(request.resource.data.fullName, 2, 120) &&
+          request.resource.data.status in ['active', 'pending', 'suspended', 'withdrawn', 'graduated', 'archived']) ||
+        (isMuallim() &&
+          isAssignedHalaqah(resource.data.get('halaqahId', '')) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['currentSurah', 'juzLevel', 'updatedAt', 'updatedBy'])) ||
+        (isKafalatOfficer() &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['kafalatEligible', 'sponsorId', 'updatedAt', 'updatedBy']))
+      );
+
+      allow delete: if false; // Archive only; never hard-delete student records
+    }
+
+    // ===============================================================
+    // Guardians
+    // ===============================================================
+    match /guardians/{guardianId} {
+      allow read: if isRegistrar() || isAccountant() || isKafalatOfficer() || isAuditor() ||
+        (isGuardian() && resource.data.get('email', '') == request.auth.token.email);
+      allow create, update: if isRegistrar() &&
+        isValidString(request.resource.data.fullName, 2, 120) &&
+        isValidString(request.resource.data.verifiedPhone, 6, 32);
+      allow delete: if false;
+    }
+
+    // ===============================================================
+    // Staff & Mu'allim Directory
+    // ===============================================================
+    match /staff/{staffId} {
+      allow read: if isStaffAny() || isAuditor();
+      allow create, update: if isManagement() &&
+        isValidString(request.resource.data.staffCode, 2, 40) &&
+        isValidString(request.resource.data.fullName, 2, 120);
+      allow delete: if false;
+    }
+
+    // ===============================================================
+    // Halaqah Groups
+    // ===============================================================
+    match /halaqahs/{halaqahId} {
+      allow read: if isStaffAny() || isAuditor() || isGuardian();
+      allow create, update: if isRegistrar() &&
+        isValidString(request.resource.data.name, 2, 100) &&
+        isPositiveNumber(request.resource.data.capacity);
+      allow delete: if isManagement();
+    }
+
+    // ===============================================================
+    // Attendance (Students & Staff)
+    // ===============================================================
+    match /attendance/{attendanceId} {
+      allow read: if isRegistrar() || isExaminer() || isAuditor() ||
+        (isMuallim() && resource.data.recordType == 'student' && isAssignedHalaqah(resource.data.get('halaqahId', ''))) ||
+        (isGuardian() && resource.data.recordType == 'student' && isLinkedStudent(resource.data.targetId));
+
+      allow create, update: if (
+        isRegistrar() ||
+        (isMuallim() &&
+          request.resource.data.recordType == 'student' &&
+          isAssignedHalaqah(request.resource.data.get('halaqahId', '')))
+      ) &&
+        request.resource.data.recordType in ['student', 'staff'] &&
+        request.resource.data.status in ['Present', 'Absent', 'Late', 'Excused'] &&
+        isValidString(request.resource.data.targetName, 1, 120) &&
+        isValidString(request.resource.data.date, 8, 20);
+
+      allow delete: if false;
+    }
+
+    // ===============================================================
+    // Hifz Logs (Sabaq, Sabqi, Manzil)
+    // ===============================================================
+    match /hifzLogs/{logId} {
+      allow read: if isRegistrar() || isExaminer() || isAuditor() ||
+        (isMuallim() && isAssignedHalaqah(resource.data.get('halaqahId', ''))) ||
+        isLinkedStudent(resource.data.studentId);
+
+      allow create: if (
+        isManagement() ||
+        (isMuallim() && isAssignedHalaqah(request.resource.data.get('halaqahId', '')))
+      ) &&
+        isValidString(request.resource.data.studentId, 1, 128) &&
+        isValidString(request.resource.data.sabaqRange, 1, 120) &&
+        request.resource.data.grade in ['Mumtaz', 'Jayyid Jiddan', 'Jayyid', 'Maqbul', 'Needs Revision'];
+
+      allow update: if (
+        isManagement() ||
+        (isMuallim() &&
+          isAssignedHalaqah(resource.data.get('halaqahId', '')) &&
+          request.resource.data.studentId == resource.data.studentId)
+      ) &&
+        request.resource.data.grade in ['Mumtaz', 'Jayyid Jiddan', 'Jayyid', 'Maqbul', 'Needs Revision'];
+
+      allow delete: if false;
+    }
+
+    // ===============================================================
+    // Examination & Assessment
+    // ===============================================================
+    match /exams/{examId} {
+      allow read: if isExaminer() || isRegistrar() || isAuditor() ||
+        (isMuallim() && isAssignedHalaqah(resource.data.get('halaqahId', ''))) ||
+        (isLinkedStudent(resource.data.studentId) && resource.data.approvalStatus == 'published');
+
+      allow create: if isExaminer() &&
+        isValidString(request.resource.data.studentId, 1, 128) &&
+        request.resource.data.examType in ['hifz_oral', 'tajweed', 'revision', 'written'] &&
+        request.resource.data.approvalStatus in ['scheduled', 'marked'] &&
+        isPositiveNumber(request.resource.data.totalScore) &&
+        request.resource.data.totalScore <= 100;
+
+      allow update: if (
+        isManagement() ||
+        (isExaminer() && request.resource.data.approvalStatus in ['scheduled', 'marked'])
+      ) &&
+        request.resource.data.approvalStatus in ['scheduled', 'marked', 'approved', 'published'] &&
+        isPositiveNumber(request.resource.data.totalScore) &&
+        request.resource.data.totalScore <= 100;
+
+      allow delete: if false;
+    }
+
+    // ===============================================================
+    // Tuition Fee Plans, Invoices & Immutable Payments
+    // ===============================================================
+    match /feePlans/{planId} {
+      allow read: if isStaffAny() || isAuditor() || isGuardian();
+      allow create, update: if isAccountant() &&
+        isValidString(request.resource.data.name, 2, 100) &&
+        isPositiveNumber(request.resource.data.amountETB);
+      allow delete: if false;
+    }
+
+    match /invoices/{invoiceId} {
+      allow read: if isAccountant() || isRegistrar() || isAuditor() || isLinkedStudent(resource.data.studentId);
+      allow create, update: if isAccountant() &&
+        isValidString(request.resource.data.invoiceNo, 3, 40) &&
+        isPositiveNumber(request.resource.data.amountDue) &&
+        isPositiveNumber(request.resource.data.amountPaid) &&
+        isPositiveNumber(request.resource.data.balance) &&
+        request.resource.data.status in ['unpaid', 'partial', 'paid', 'waived'];
+      allow delete: if false;
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isAccountant() || isAuditor() || isLinkedStudent(resource.data.studentId);
+
+      allow create: if isAccountant() &&
+        request.resource.data.receiptNo.matches('^AFQ-RCP-[0-9]{4}-[0-9]{6}$') &&
+        isPositiveNumber(request.resource.data.amountETB) &&
+        request.resource.data.amountETB > 0 &&
+        request.resource.data.method in ['cash', 'bank', 'mobile'] &&
+        request.resource.data.reversalStatus == 'active';
+
+      // Receipts cannot be altered except for formal void/reversal with reason and approver
+      allow update: if isAccountant() &&
+        resource.data.reversalStatus == 'active' &&
+        request.resource.data.reversalStatus == 'reversed' &&
+        request.resource.data.receiptNo == resource.data.receiptNo &&
+        request.resource.data.amountETB == resource.data.amountETB &&
+        request.resource.data.studentId == resource.data.studentId &&
+        isValidString(request.resource.data.reversalReason, 4, 300) &&
+        isValidString(request.resource.data.reversedBy, 2, 128);
+
+      allow delete: if false;
+    }
+
+    // ===============================================================
+    // Kafalat & Sponsorship
+    // ===============================================================
+    match /sponsors/{sponsorId} {
+      allow read: if isKafalatOfficer() || isAccountant() || isAuditor();
+      allow create, update: if (isKafalatOfficer() || isAccountant()) &&
+        isValidString(request.resource.data.fullName, 2, 120) &&
+        isPositiveNumber(request.resource.data.commitmentETB) &&
+        request.resource.data.status in ['active', 'paused', 'completed'];
+      allow delete: if false;
+    }
+
+    // ===============================================================
+    // Donations & Fundraising (Public Campaign Goals & Pledge Intake)
+    // ===============================================================
+    match /campaigns/{campaignId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAccountant() &&
+        isValidString(request.resource.data.title, 2, 140) &&
+        isPositiveNumber(request.resource.data.targetETB);
+      allow delete: if false;
+    }
+
+    match /donors/{donorId} {
+      allow read: if isAccountant() || isKafalatOfficer() || isAuditor();
+      allow create, update: if isAccountant() &&
+        isValidString(request.resource.data.fullName, 2, 120);
+      allow delete: if false;
+    }
+
+    match /pledges/{pledgeId} {
+      allow read: if isAccountant() || isKafalatOfficer() || isAuditor();
+      // Public donors may submit pledges; private donor lists remain restricted
+      allow create: if (
+        isAccountant() ||
+        request.resource.data.status == 'pledged'
+      ) &&
+        isValidString(request.resource.data.donorName, 2, 120) &&
+        isPositiveNumber(request.resource.data.amountETB) &&
+        request.resource.data.amountETB > 0 &&
+        request.resource.data.status in ['pledged', 'partial', 'fulfilled', 'cancelled'];
+      allow update: if isAccountant() &&
+        request.resource.data.status in ['pledged', 'partial', 'fulfilled', 'cancelled'];
+      allow delete: if false;
+    }
+
+    match /donations/{donationId} {
+      allow read: if isAccountant() || isAuditor();
+      allow create: if isAccountant() &&
+        isValidString(request.resource.data.receiptNo, 4, 40) &&
+        isPositiveNumber(request.resource.data.amountETB) &&
+        request.resource.data.amountETB > 0 &&
+        request.resource.data.method in ['cash', 'bank', 'mobile'];
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ===============================================================
+    // Public Admission Portal & Registrar Queue
+    // ===============================================================
+    match /admissions/{admissionId} {
+      allow read: if isRegistrar() || isAuditor();
+
+      // Public applicants can submit new applications with consent accepted
+      allow create: if (
+        isRegistrar() ||
+        request.resource.data.status == 'submitted'
+      ) &&
+        request.resource.data.referenceNo.matches('^AFQ-ADM-[0-9]{4}-[0-9]{6}$') &&
+        isValidString(request.resource.data.fullName, 2, 120) &&
+        request.resource.data.gender in ['male', 'female'] &&
+        request.resource.data.track in ['full_hifz', 'part_time_hifz', 'nazirah_tajweed', 'islamic_studies'] &&
+        isValidString(request.resource.data.guardianName, 2, 120) &&
+        isValidString(request.resource.data.guardianPhone, 6, 32) &&
+        request.resource.data.consentAccepted == true &&
+        request.resource.data.status in ['submitted', 'under_review', 'accepted', 'waitlisted', 'rejected', 'enrolled'];
+
+      allow update: if isRegistrar() &&
+        request.resource.data.status in ['submitted', 'under_review', 'accepted', 'waitlisted', 'rejected', 'enrolled'];
+
+      allow delete: if false;
+    }
+
+    // ===============================================================
+    // Library & Learning Resources
+    // ===============================================================
+    match /books/{bookId} {
+      allow read: if isStaffAny() || isAuditor() || isGuardian();
+      allow create, update: if isLibrarian() &&
+        isValidString(request.resource.data.title, 1, 160) &&
+        isValidString(request.resource.data.accessionCode, 2, 40);
+      allow delete: if isManagement();
+    }
+
+    match /bookLoans/{loanId} {
+      allow read: if isLibrarian() || isRegistrar() || isAuditor();
+      allow create, update: if isLibrarian() &&
+        request.resource.data.status in ['borrowed', 'returned', 'overdue', 'lost'];
+      allow delete: if false;
+    }
+
+    // ===============================================================
+    // Certificates & Minimal Public QR Verification
+    // ===============================================================
+    match /certificates/{certificateId} {
+      allow read: if isRegistrar() || isExaminer() || isAuditor() || isLinkedStudent(resource.data.studentId);
+      allow create: if isRegistrar() &&
+        request.resource.data.certificateNo.matches('^AFQ-CERT-[A-Z0-9]+-[0-9]{6}$') &&
+        isValidString(request.resource.data.studentName, 2, 120) &&
+        isValidString(request.resource.data.verificationToken, 12, 64) &&
+        request.resource.data.status == 'active';
+      allow update: if isManagement() &&
+        request.resource.data.certificateNo == resource.data.certificateNo &&
+        request.resource.data.status in ['active', 'revoked'];
+      allow delete: if false;
+    }
+
+    match /publicCertificates/{token} {
+      // Opaque >=12-char verification token lookup only; listing forbidden
+      allow get: if token.size() >= 12;
+      allow list: if false;
+      allow create, update: if isRegistrar();
+      allow delete: if false;
+    }
+
+    // ===============================================================
+    // Notifications
+    // ===============================================================
+    match /notifications/{notificationId} {
+      allow read: if isStaffAny() || isAuditor() ||
+        (isGuardian() && (resource.data.get('recipientUid', '') == request.auth.uid || resource.data.get('recipientRole', '') == 'guardian'));
+      allow create: if isStaffAny() &&
+        isValidString(request.resource.data.title, 1, 160) &&
+        isValidString(request.resource.data.message, 1, 1000) &&
+        request.resource.data.channel in ['in_app', 'sms', 'email', 'whatsapp'];
+      allow update: if isStaffAny();
+      allow delete: if false;
+    }
+
+    // ===============================================================
+    // Immutable Audit Logs
+    // ===============================================================
+    match /auditLogs/{logId} {
+      allow read: if isManagement() || isAuditor();
+      allow create: if isActiveUser() &&
+        request.resource.data.actorUid == request.auth.uid &&
+        isValidString(request.resource.data.action, 2, 80) &&
+        isValidString(request.resource.data.entity, 2, 60);
+      allow update, delete: if false;
+    }
+
+    // ===============================================================
+    // Global Settings & Sequential Counters
+    // ===============================================================
+    match /settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isManagement();
+      allow delete: if false;
+    }
+
+    match /counters/{counterId} {
+      allow read, create, update: if isStaffAny();
+      allow delete: if false;
+    }
+
+    // ===============================================================
+    // Default Deny Fallback
+    // ===============================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

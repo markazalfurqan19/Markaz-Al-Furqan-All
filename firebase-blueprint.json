@@ -1,0 +1,559 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated Markaz user account with RBAC role, institution scope, assigned halaqahs, and linked guardian student IDs.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "email": { "type": "string", "maxLength": 180 },
+        "phone": { "type": "string", "maxLength": 40 },
+        "role": {
+          "type": "string",
+          "enum": [
+            "super_admin",
+            "director",
+            "registrar",
+            "muallim",
+            "examiner",
+            "accountant",
+            "kafalat_officer",
+            "librarian",
+            "guardian",
+            "auditor"
+          ]
+        },
+        "institutionId": { "type": "string", "maxLength": 64 },
+        "assignedHalaqahIds": { "type": "array", "items": { "type": "string" } },
+        "linkedStudentIds": { "type": "array", "items": { "type": "string" } },
+        "preferredLanguage": { "type": "string", "enum": ["om", "ar", "en"] },
+        "active": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid", "displayName", "email", "role", "active"]
+    },
+    "Student": {
+      "title": "Student",
+      "description": "Registered Markaz student with unique AFQ-YYYY-NNNNNN code, Hifz tracking, guardian link, and status lifecycle.",
+      "type": "object",
+      "properties": {
+        "code": { "type": "string", "pattern": "^AFQ-[0-9]{4}-[0-9]{6}$" },
+        "fullName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "dob": { "type": "string", "maxLength": 20 },
+        "age": { "type": "number", "minimum": 3, "maximum": 90 },
+        "gender": { "type": "string", "enum": ["male", "female"] },
+        "guardianIds": { "type": "array", "items": { "type": "string" } },
+        "guardianName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "guardianPhone": { "type": "string", "minLength": 6, "maxLength": 32 },
+        "address": { "type": "string", "maxLength": 200 },
+        "track": { "type": "string", "enum": ["full_hifz", "part_time_hifz", "nazirah_tajweed", "islamic_studies"] },
+        "currentSurah": { "type": "string", "maxLength": 80 },
+        "juzLevel": { "type": "number", "minimum": 0, "maximum": 30 },
+        "halaqahId": { "type": "string", "maxLength": 80 },
+        "halaqahGroup": { "type": "string", "maxLength": 80 },
+        "status": { "type": "string", "enum": ["active", "pending", "suspended", "withdrawn", "graduated", "archived"] },
+        "kafalatEligible": { "type": "boolean" },
+        "sponsorId": { "type": "string", "maxLength": 80 },
+        "enrollmentDate": { "type": "string", "maxLength": 32 },
+        "admissionSource": { "type": "string", "maxLength": 64 },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "institutionId": { "type": "string", "maxLength": 64 },
+        "createdBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["code", "fullName", "gender", "guardianName", "guardianPhone", "track", "status"]
+    },
+    "Guardian": {
+      "title": "Guardian",
+      "description": "Verified parent or guardian linked to one or more Markaz students.",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "verifiedPhone": { "type": "string", "minLength": 6, "maxLength": 32 },
+        "email": { "type": "string", "maxLength": 180 },
+        "relationship": { "type": "string", "maxLength": 40 },
+        "linkedStudentIds": { "type": "array", "items": { "type": "string" } },
+        "consentStatus": { "type": "string", "enum": ["granted", "pending", "revoked"] },
+        "preferredLanguage": { "type": "string", "enum": ["om", "ar", "en"] },
+        "address": { "type": "string", "maxLength": 200 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["fullName", "verifiedPhone", "relationship", "consentStatus"]
+    },
+    "Staff": {
+      "title": "Staff",
+      "description": "Mu'allim and administrative staff directory records.",
+      "type": "object",
+      "properties": {
+        "staffCode": { "type": "string", "maxLength": 40 },
+        "fullName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "role": { "type": "string", "maxLength": 40 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "email": { "type": "string", "maxLength": 180 },
+        "qualification": { "type": "string", "maxLength": 160 },
+        "employmentStatus": { "type": "string", "enum": ["active", "on_leave", "inactive", "archived"] },
+        "contractType": { "type": "string", "enum": ["full_time", "part_time", "volunteer"] },
+        "assignedHalaqahIds": { "type": "array", "items": { "type": "string" } },
+        "joinDate": { "type": "string", "maxLength": 32 },
+        "active": { "type": "boolean" }
+      },
+      "required": ["staffCode", "fullName", "role", "employmentStatus"]
+    },
+    "Halaqah": {
+      "title": "Halaqah",
+      "description": "Quran memorization circle / class group assigned to a Mu'allim.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "level": { "type": "string", "maxLength": 60 },
+        "track": { "type": "string", "maxLength": 60 },
+        "muallimId": { "type": "string", "maxLength": 128 },
+        "muallimName": { "type": "string", "maxLength": 120 },
+        "schedule": { "type": "string", "maxLength": 120 },
+        "shift": { "type": "string", "enum": ["morning", "afternoon", "evening", "weekend"] },
+        "classroom": { "type": "string", "maxLength": 60 },
+        "capacity": { "type": "number", "minimum": 1, "maximum": 200 },
+        "active": { "type": "boolean" }
+      },
+      "required": ["name", "level", "muallimName", "capacity", "active"]
+    },
+    "AttendanceRecord": {
+      "title": "AttendanceRecord",
+      "description": "Daily attendance record for students or staff by date and session.",
+      "type": "object",
+      "properties": {
+        "recordType": { "type": "string", "enum": ["student", "staff"] },
+        "targetId": { "type": "string", "maxLength": 128 },
+        "targetName": { "type": "string", "maxLength": 120 },
+        "targetCode": { "type": "string", "maxLength": 40 },
+        "halaqahId": { "type": "string", "maxLength": 80 },
+        "date": { "type": "string", "maxLength": 20 },
+        "session": { "type": "string", "enum": ["fajr", "morning", "afternoon", "maghrib", "full_day"] },
+        "status": { "type": "string", "enum": ["Present", "Absent", "Late", "Excused"] },
+        "reason": { "type": "string", "maxLength": 300 },
+        "qrVerified": { "type": "boolean" },
+        "recordedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["recordType", "targetId", "targetName", "date", "session", "status", "recordedBy"]
+    },
+    "HifzLog": {
+      "title": "HifzLog",
+      "description": "Daily Sabaq, Sabqi, and Manzil memorization log.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string", "maxLength": 128 },
+        "studentName": { "type": "string", "maxLength": 120 },
+        "studentCode": { "type": "string", "maxLength": 40 },
+        "halaqahId": { "type": "string", "maxLength": 80 },
+        "date": { "type": "string", "maxLength": 20 },
+        "sabaqRange": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "sabaqPages": { "type": "number", "minimum": 0, "maximum": 40 },
+        "currentSurah": { "type": "string", "maxLength": 80 },
+        "sabqiJuz": { "type": "string", "maxLength": 60 },
+        "manzilJuz": { "type": "string", "maxLength": 60 },
+        "grade": { "type": "string", "enum": ["Mumtaz", "Jayyid Jiddan", "Jayyid", "Maqbul", "Needs Revision"] },
+        "muallimId": { "type": "string", "maxLength": 128 },
+        "muallimName": { "type": "string", "maxLength": 120 },
+        "remarks": { "type": "string", "maxLength": 400 },
+        "reviewStatus": { "type": "string", "enum": ["draft", "submitted", "reviewed"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["studentId", "studentName", "date", "sabaqRange", "sabqiJuz", "manzilJuz", "grade", "muallimId"]
+    },
+    "ExamRecord": {
+      "title": "ExamRecord",
+      "description": "Quran oral, Tajweed, revision, or Islamic studies assessment with moderation.",
+      "type": "object",
+      "properties": {
+        "studentId": { "type": "string", "maxLength": 128 },
+        "studentName": { "type": "string", "maxLength": 120 },
+        "studentCode": { "type": "string", "maxLength": 40 },
+        "examDate": { "type": "string", "maxLength": 20 },
+        "examType": { "type": "string", "enum": ["hifz_oral", "tajweed", "revision", "written"] },
+        "juzTested": { "type": "string", "maxLength": 60 },
+        "totalScore": { "type": "number", "minimum": 0, "maximum": 100 },
+        "maximumScore": { "type": "number", "minimum": 1, "maximum": 100 },
+        "grade": { "type": "string", "maxLength": 40 },
+        "examinerId": { "type": "string", "maxLength": 128 },
+        "examinerName": { "type": "string", "maxLength": 120 },
+        "approvalStatus": { "type": "string", "enum": ["scheduled", "marked", "approved", "published"] },
+        "comments": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["studentId", "studentName", "examDate", "examType", "juzTested", "totalScore", "grade", "examinerId", "approvalStatus"]
+    },
+    "FeePlan": {
+      "title": "FeePlan",
+      "description": "Markaz tuition fee plan configured in ETB.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "track": { "type": "string", "maxLength": 60 },
+        "amountETB": { "type": "number", "minimum": 0 },
+        "frequency": { "type": "string", "enum": ["monthly", "term", "annual", "one_time"] },
+        "effectiveFrom": { "type": "string", "maxLength": 20 },
+        "active": { "type": "boolean" }
+      },
+      "required": ["name", "amountETB", "frequency", "active"]
+    },
+    "Invoice": {
+      "title": "Invoice",
+      "description": "Student tuition invoice tracking balance and arrears.",
+      "type": "object",
+      "properties": {
+        "invoiceNo": { "type": "string", "maxLength": 40 },
+        "studentId": { "type": "string", "maxLength": 128 },
+        "studentName": { "type": "string", "maxLength": 120 },
+        "studentCode": { "type": "string", "maxLength": 40 },
+        "period": { "type": "string", "maxLength": 40 },
+        "amountDue": { "type": "number", "minimum": 0 },
+        "amountPaid": { "type": "number", "minimum": 0 },
+        "balance": { "type": "number", "minimum": 0 },
+        "status": { "type": "string", "enum": ["unpaid", "partial", "paid", "waived"] },
+        "dueDate": { "type": "string", "maxLength": 20 }
+      },
+      "required": ["invoiceNo", "studentId", "studentName", "period", "amountDue", "amountPaid", "balance", "status"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "Immutable sequential tuition receipt with void/reversal workflow.",
+      "type": "object",
+      "properties": {
+        "receiptNo": { "type": "string", "pattern": "^AFQ-RCP-[0-9]{4}-[0-9]{6}$" },
+        "invoiceId": { "type": "string", "maxLength": 128 },
+        "studentId": { "type": "string", "maxLength": 128 },
+        "studentName": { "type": "string", "maxLength": 120 },
+        "payerName": { "type": "string", "maxLength": 120 },
+        "amountETB": { "type": "number", "minimum": 1 },
+        "method": { "type": "string", "enum": ["cash", "bank", "mobile"] },
+        "transactionDate": { "type": "string", "maxLength": 32 },
+        "recordedBy": { "type": "string", "maxLength": 128 },
+        "reversalStatus": { "type": "string", "enum": ["active", "reversed"] },
+        "reversalReason": { "type": "string", "maxLength": 300 },
+        "reversedBy": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["receiptNo", "studentId", "studentName", "amountETB", "method", "transactionDate", "recordedBy", "reversalStatus"]
+    },
+    "Sponsor": {
+      "title": "Sponsor",
+      "description": "Kafalat sponsor record matched to an eligible student without double-allocation.",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "phone": { "type": "string", "maxLength": 32 },
+        "email": { "type": "string", "maxLength": 180 },
+        "commitmentETB": { "type": "number", "minimum": 1 },
+        "frequency": { "type": "string", "enum": ["monthly", "quarterly", "annual"] },
+        "beneficiaryStudentId": { "type": "string", "maxLength": 128 },
+        "beneficiaryStudentName": { "type": "string", "maxLength": 120 },
+        "startDate": { "type": "string", "maxLength": 20 },
+        "status": { "type": "string", "enum": ["active", "paused", "completed"] },
+        "anonymousReporting": { "type": "boolean" }
+      },
+      "required": ["fullName", "commitmentETB", "frequency", "status"]
+    },
+    "Donor": {
+      "title": "Donor",
+      "description": "Registered Markaz donor with consent and anonymity preference.",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "isAnonymous": { "type": "boolean" },
+        "phone": { "type": "string", "maxLength": 32 },
+        "email": { "type": "string", "maxLength": 180 },
+        "preferredLanguage": { "type": "string", "enum": ["om", "ar", "en"] },
+        "consentToContact": { "type": "boolean" }
+      },
+      "required": ["fullName", "isAnonymous"]
+    },
+    "Campaign": {
+      "title": "Campaign",
+      "description": "Fundraising campaign tracking target, pledged, and actual received funds separately.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 2, "maxLength": 140 },
+        "description": { "type": "string", "maxLength": 500 },
+        "targetETB": { "type": "number", "minimum": 1 },
+        "pledgedETB": { "type": "number", "minimum": 0 },
+        "raisedETB": { "type": "number", "minimum": 0 },
+        "status": { "type": "string", "enum": ["active", "completed", "archived"] }
+      },
+      "required": ["title", "targetETB", "pledgedETB", "raisedETB", "status"]
+    },
+    "Pledge": {
+      "title": "Pledge",
+      "description": "Donation pledge kept strictly separate from received cash.",
+      "type": "object",
+      "properties": {
+        "donorId": { "type": "string", "maxLength": 128 },
+        "donorName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "donorPhone": { "type": "string", "maxLength": 32 },
+        "campaignId": { "type": "string", "maxLength": 128 },
+        "campaignTitle": { "type": "string", "maxLength": 140 },
+        "amountETB": { "type": "number", "minimum": 1 },
+        "tier": { "type": "string", "maxLength": 60 },
+        "status": { "type": "string", "enum": ["pledged", "partial", "fulfilled", "cancelled"] },
+        "pledgedAt": { "type": "string" }
+      },
+      "required": ["donorName", "amountETB", "status"]
+    },
+    "Donation": {
+      "title": "Donation",
+      "description": "Actual received donation recorded in ledger with receipt number.",
+      "type": "object",
+      "properties": {
+        "donorId": { "type": "string", "maxLength": 128 },
+        "donorName": { "type": "string", "maxLength": 120 },
+        "isAnonymous": { "type": "boolean" },
+        "campaignId": { "type": "string", "maxLength": 128 },
+        "campaignTitle": { "type": "string", "maxLength": 140 },
+        "pledgeId": { "type": "string", "maxLength": 128 },
+        "amountETB": { "type": "number", "minimum": 1 },
+        "method": { "type": "string", "enum": ["cash", "bank", "mobile"] },
+        "receiptNo": { "type": "string", "maxLength": 40 },
+        "receivedAt": { "type": "string" },
+        "recordedBy": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["donorName", "amountETB", "method", "receiptNo", "receivedAt", "recordedBy"]
+    },
+    "AdmissionApplication": {
+      "title": "AdmissionApplication",
+      "description": "Public Markaz admission submission with AFQ-ADM reference and Registrar review.",
+      "type": "object",
+      "properties": {
+        "referenceNo": { "type": "string", "pattern": "^AFQ-ADM-[0-9]{4}-[0-9]{6}$" },
+        "fullName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "dob": { "type": "string", "maxLength": 20 },
+        "age": { "type": "number", "minimum": 3, "maximum": 90 },
+        "gender": { "type": "string", "enum": ["male", "female"] },
+        "phone": { "type": "string", "minLength": 6, "maxLength": 32 },
+        "guardianName": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "guardianPhone": { "type": "string", "minLength": 6, "maxLength": 32 },
+        "address": { "type": "string", "maxLength": 200 },
+        "track": { "type": "string", "enum": ["full_hifz", "part_time_hifz", "nazirah_tajweed", "islamic_studies"] },
+        "priorHifzJuz": { "type": "number", "minimum": 0, "maximum": 30 },
+        "consentAccepted": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["submitted", "under_review", "accepted", "waitlisted", "rejected", "enrolled"] },
+        "reviewNotes": { "type": "string", "maxLength": 500 },
+        "reviewedBy": { "type": "string", "maxLength": 128 },
+        "linkedStudentId": { "type": "string", "maxLength": 128 },
+        "submittedAt": { "type": "string" }
+      },
+      "required": ["referenceNo", "fullName", "gender", "guardianName", "guardianPhone", "track", "consentAccepted", "status"]
+    },
+    "Book": {
+      "title": "Book",
+      "description": "Markaz library book inventory record.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "author": { "type": "string", "maxLength": 120 },
+        "category": { "type": "string", "maxLength": 60 },
+        "language": { "type": "string", "enum": ["om", "ar", "en"] },
+        "accessionCode": { "type": "string", "maxLength": 40 },
+        "totalCopies": { "type": "number", "minimum": 1 },
+        "availableCopies": { "type": "number", "minimum": 0 }
+      },
+      "required": ["title", "accessionCode", "totalCopies", "availableCopies"]
+    },
+    "BookLoan": {
+      "title": "BookLoan",
+      "description": "Library book borrowing, due date, return, and overdue tracking.",
+      "type": "object",
+      "properties": {
+        "bookId": { "type": "string", "maxLength": 128 },
+        "bookTitle": { "type": "string", "maxLength": 160 },
+        "accessionCode": { "type": "string", "maxLength": 40 },
+        "borrowerId": { "type": "string", "maxLength": 128 },
+        "borrowerName": { "type": "string", "maxLength": 120 },
+        "borrowerType": { "type": "string", "enum": ["student", "staff"] },
+        "issuedAt": { "type": "string" },
+        "dueAt": { "type": "string" },
+        "returnedAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["borrowed", "returned", "overdue", "lost"] },
+        "issuedBy": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["bookId", "bookTitle", "borrowerId", "borrowerName", "issuedAt", "dueAt", "status"]
+    },
+    "Certificate": {
+      "title": "Certificate",
+      "description": "Graduation certificate with AFQ-CERT code and opaque QR verification token.",
+      "type": "object",
+      "properties": {
+        "certificateNo": { "type": "string", "pattern": "^AFQ-CERT-[A-Z0-9]+-[0-9]{6}$" },
+        "studentId": { "type": "string", "maxLength": 128 },
+        "studentName": { "type": "string", "maxLength": 120 },
+        "studentCode": { "type": "string", "maxLength": 40 },
+        "graduationBatch": { "type": "string", "maxLength": 40 },
+        "track": { "type": "string", "maxLength": 60 },
+        "totalJuzCompleted": { "type": "number", "minimum": 1, "maximum": 30 },
+        "finalGrade": { "type": "string", "maxLength": 40 },
+        "issuedAt": { "type": "string" },
+        "verificationToken": { "type": "string", "minLength": 12, "maxLength": 64 },
+        "status": { "type": "string", "enum": ["active", "revoked"] },
+        "revocationReason": { "type": "string", "maxLength": 300 },
+        "approvedBy": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["certificateNo", "studentId", "studentName", "graduationBatch", "verificationToken", "status"]
+    },
+    "NotificationRecord": {
+      "title": "NotificationRecord",
+      "description": "In-app and multi-channel communication notice with consent and delivery log.",
+      "type": "object",
+      "properties": {
+        "recipientUid": { "type": "string", "maxLength": 128 },
+        "recipientRole": { "type": "string", "maxLength": 40 },
+        "title": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "message": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "channel": { "type": "string", "enum": ["in_app", "sms", "email", "whatsapp"] },
+        "language": { "type": "string", "enum": ["om", "ar", "en"] },
+        "deliveryStatus": { "type": "string", "enum": ["queued", "sent", "failed"] },
+        "consentVerified": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["title", "message", "channel", "language", "deliveryStatus"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Immutable security and operational audit trail.",
+      "type": "object",
+      "properties": {
+        "actorUid": { "type": "string", "maxLength": 128 },
+        "actorEmail": { "type": "string", "maxLength": 180 },
+        "actorRole": { "type": "string", "maxLength": 40 },
+        "action": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "entity": { "type": "string", "minLength": 2, "maxLength": 60 },
+        "entityId": { "type": "string", "maxLength": 128 },
+        "summary": { "type": "string", "maxLength": 500 },
+        "reason": { "type": "string", "maxLength": 300 },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["actorUid", "action", "entity", "entityId", "timestamp"]
+    },
+    "InstitutionSettings": {
+      "title": "InstitutionSettings",
+      "description": "Global Markaz configuration for languages, grading scales, fee defaults, and prefixes.",
+      "type": "object",
+      "properties": {
+        "institutionNameOm": { "type": "string", "maxLength": 160 },
+        "institutionNameAr": { "type": "string", "maxLength": 160 },
+        "institutionNameEn": { "type": "string", "maxLength": 160 },
+        "location": { "type": "string", "maxLength": 160 },
+        "defaultLanguage": { "type": "string", "enum": ["om", "ar", "en"] },
+        "hijriDisplayEnabled": { "type": "boolean" },
+        "activeAcademicYear": { "type": "string", "maxLength": 32 },
+        "updatedAt": { "type": "string" },
+        "updatedBy": { "type": "string", "maxLength": 128 }
+      },
+      "required": ["institutionNameOm", "defaultLanguage"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Markaz user profile and RBAC assignments."
+    },
+    "/students/{studentId}": {
+      "schema": { "$ref": "#/entities/Student" },
+      "description": "Enrolled and archived student profiles."
+    },
+    "/guardians/{guardianId}": {
+      "schema": { "$ref": "#/entities/Guardian" },
+      "description": "Verified parent/guardian contact and child links."
+    },
+    "/staff/{staffId}": {
+      "schema": { "$ref": "#/entities/Staff" },
+      "description": "Mu'allim and administrative staff records."
+    },
+    "/halaqahs/{halaqahId}": {
+      "schema": { "$ref": "#/entities/Halaqah" },
+      "description": "Halaqah groups, capacities, and schedules."
+    },
+    "/attendance/{attendanceId}": {
+      "schema": { "$ref": "#/entities/AttendanceRecord" },
+      "description": "Daily student and staff attendance records."
+    },
+    "/hifzLogs/{logId}": {
+      "schema": { "$ref": "#/entities/HifzLog" },
+      "description": "Daily Sabaq, Sabqi, and Manzil memorization records."
+    },
+    "/exams/{examId}": {
+      "schema": { "$ref": "#/entities/ExamRecord" },
+      "description": "Oral, Tajweed, revision, and written exam assessments."
+    },
+    "/feePlans/{planId}": {
+      "schema": { "$ref": "#/entities/FeePlan" },
+      "description": "Tuition fee schedules in ETB."
+    },
+    "/invoices/{invoiceId}": {
+      "schema": { "$ref": "#/entities/Invoice" },
+      "description": "Student tuition invoices."
+    },
+    "/payments/{paymentId}": {
+      "schema": { "$ref": "#/entities/Payment" },
+      "description": "Immutable sequential tuition receipts with reversal metadata."
+    },
+    "/sponsors/{sponsorId}": {
+      "schema": { "$ref": "#/entities/Sponsor" },
+      "description": "Kafalat sponsors and beneficiary student links."
+    },
+    "/donors/{donorId}": {
+      "schema": { "$ref": "#/entities/Donor" },
+      "description": "Fundraising donors and contact consent."
+    },
+    "/campaigns/{campaignId}": {
+      "schema": { "$ref": "#/entities/Campaign" },
+      "description": "Fundraising campaigns tracking target, pledged, and received ETB."
+    },
+    "/pledges/{pledgeId}": {
+      "schema": { "$ref": "#/entities/Pledge" },
+      "description": "Donation pledges separated from received cash."
+    },
+    "/donations/{donationId}": {
+      "schema": { "$ref": "#/entities/Donation" },
+      "description": "Received cash/bank/mobile donations."
+    },
+    "/admissions/{admissionId}": {
+      "schema": { "$ref": "#/entities/AdmissionApplication" },
+      "description": "Public admission submissions and Registrar review queue."
+    },
+    "/books/{bookId}": {
+      "schema": { "$ref": "#/entities/Book" },
+      "description": "Library book catalogue."
+    },
+    "/bookLoans/{loanId}": {
+      "schema": { "$ref": "#/entities/BookLoan" },
+      "description": "Library borrowing and return transactions."
+    },
+    "/certificates/{certificateId}": {
+      "schema": { "$ref": "#/entities/Certificate" },
+      "description": "Issued graduation certificates."
+    },
+    "/publicCertificates/{token}": {
+      "schema": { "type": "object" },
+      "description": "Minimal non-PII public QR certificate verification mirror."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/NotificationRecord" },
+      "description": "In-app and multi-channel communication logs."
+    },
+    "/auditLogs/{logId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Append-only security and operational audit log."
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/InstitutionSettings" },
+      "description": "Institution settings and grading/fee rules."
+    },
+    "/counters/{counterId}": {
+      "schema": { "type": "object" },
+      "description": "Sequential numbering counters for AFQ codes and receipts."
+    }
+  }
+}

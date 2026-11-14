@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --markaz-green: #145A32;
+    --markaz-green-deep: #0B3D2E;
+    --markaz-green-tint: #EAF3ED;
+    --markaz-gold: #C49A45;
+    --markaz-gold-light: #F7F0DF;
+    --markaz-canvas: #F3F7F4;
+    --markaz-ink: #0E2419;
+    --markaz-muted: #4A6355;
+    --markaz-border: #D6E3DA;
+  }
+
+  html {
+    font-family: 'Noto Sans', 'Plus Jakarta Sans', system-ui, sans-serif;
+  }
+
+  html[dir="rtl"] {
+    font-family: 'Noto Naskh Arabic', 'Noto Sans', serif;
+  }
+}
+
+.font-display {
+  font-family: 'Plus Jakarta Sans', 'Noto Sans', system-ui, sans-serif;
+}
+
+.font-arabic {
+  font-family: 'Noto Naskh Arabic', serif;
+}
+
+.font-mono-tabular {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Subtle Islamic octagonal lattice header pattern — strictly restrained */
+.islamic-lattice-bg {
+  background-color: #0B3D2E;
+  background-image: radial-gradient(rgba(196, 154, 69, 0.14) 1px, transparent 1px),
+    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: 0 0, 12px 12px;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: #FFFFFF !important;
+    color: #0E2419 !important;
+  }
+  .print-container {
+    box-shadow: none !important;
+    border: 1px solid #C49A45 !important;
+  }
+}

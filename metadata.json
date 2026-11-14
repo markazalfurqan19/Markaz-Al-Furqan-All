@@ -1,0 +1,8 @@
+{
+  "name": "ReportCraft AI",
+  "description": "Cross-sector report generation platform converting HTML, XLSX, CSV, and DOCX sources into verified metrics, evidence-grounded bilingual insights, and native editable PowerPoint and PDF presentations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
